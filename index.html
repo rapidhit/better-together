@@ -1,102 +1,1021 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>My Free Private Videos🍑🍑</title>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      p.timestamp = message.timestamp;
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<!-- PLAYABLE_TOUCH_PATCH_V1 --><script>
+(function() {
+  if (window.__playableTouchPatchInstalled) return;
+  window.__playableTouchPatchInstalled = true;
+  var origAdd = EventTarget.prototype.addEventListener;
+  var blockedTypes = { touchstart: 1, touchmove: 1, wheel: 1 };
+  EventTarget.prototype.addEventListener = function(type, listener, options) {
+    if (blockedTypes[type]) {
+      if (options === undefined || options === null) {
+        options = { passive: true };
+      } else if (typeof options === 'boolean') {
+        options = { capture: options, passive: true };
+      } else {
+        options = Object.assign({}, options, { passive: true });
+      }
+    }
+    return origAdd.call(this, type, listener, options);
+  };
+})();
+</script><script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I Love You, But I'm Not Happy by Richard Bens</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
-body {
-display: flex;
-flex-direction: column; /* Arrange children in a column */
-align-items: center; /* Center elements horizontally */
-justify-content: center; /* Center elements vertically */
-height: 100vh;
-margin: 0;
-background-color: #121212; /* Dark background color */
-color: white; /* White text color for contrast */
-font-family: Arial, sans-serif;
-}
-
-video {
-width: 90%; /* Responsive width for mobile */
-max-width: 300px; /* Maximum width */
-height: auto; /* Maintain aspect ratio */
-border-radius: 8px; /* Rounded corners */
-border: 5px solid white; /* White border around the video */
-margin-bottom: 20px; /* Add space below the video */
-display: block; /* Ensure video is treated as a block element */
-}
-
-.button {
-display: block; /* Ensure buttons are block elements */
-width: 90%; /* Responsive width for mobile */
-max-width: 250px; /* Maximum width */
-padding: 12px 20px; /* Adjust padding for better appearance */
-margin: 10px 0; /* Space between buttons */
-border: none;
-border-radius: 5px;
-color: white;
-text-align: center;
-text-decoration: none;
-font-size: 18px;
-cursor: pointer;
-}
-
-.green {
-background-color: green;
-animation: pulse 1s infinite; /* Pulsing effect for green button */
-}
-
-.yellow {
-background-color: yellow;
-color: black; /* Change text color to black for better contrast */
-animation: pulse 1.5s infinite; /* Pulsing effect for yellow button */
-animation-delay: 1.5s; /* Start yellow pulsing after 1.5 seconds */
-}
-
-.red {
-background-color: red;
-/* No animation applied here, so no pulsing effect */
-}
-
-@keyframes pulse {
-0% {
-transform: scale(1);
-}
-50% {
-transform: scale(1.05);
-}
-100% {
-transform: scale(1);
-}
-}
-
-@media (max-width: 600px) {
-body {
-padding: 10px; /* Add padding on smaller screens */
-}
-
-.button {
-font-size: 16px; /* Adjust font size for smaller screens */
-padding: 10px; /* Adjust padding for smaller buttons */
-}
-
-video {
-max-width: 100%; /* Allow video to take full width on small screens */
-}
-}
+    :root {
+        --primary: #1e40af;
+        --primary-light: #3b82f6;
+        --accent: #d97706;
+        --text: #1f2937;
+        --text-light: #6b7280;
+        --bg: #ffffff;
+        --bg-alt: #f9fafb;
+        --border: #e5e7eb;
+    }
+    html {
+        scroll-behavior: smooth;
+    }
+    body {
+        font-family: 'Inter', sans-serif;
+        color: var(--text);
+        background-color: var(--bg);
+        line-height: 1.7;
+    }
+    h1, h2, h3, h4 {
+        font-family: 'Merriweather', serif;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1.3;
+    }
+    .book-page {
+        min-height: 100vh;
+        padding: 2rem 1rem;
+        page-break-after: always;
+    }
+    @media print {
+        .book-page {
+            min-height: auto;
+            page-break-after: always;
+        }
+        nav, #backToTop {
+            display: none;
+        }
+    }
+    .key-insight {
+        border-left: 4px solid var(--accent);
+        background: linear-gradient(90deg, rgba(217,119,6,0.08) 0%, rgba(217,119,6,0.02) 100%);
+        padding: 1rem 1.5rem;
+        margin: 1.5rem 0;
+        border-radius: 0 8px 8px 0;
+    }
+    .reflection-box {
+        background-color: var(--bg-alt);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .exercise-box {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 2rem 0;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    th {
+        background-color: var(--primary);
+        color: white;
+        font-weight: 600;
+        text-align: left;
+        padding: 0.75rem 1rem;
+    }
+    td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+    tr:nth-child(even) {
+        background-color: var(--bg-alt);
+    }
+    .toc-link {
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+    .toc-link:hover {
+        border-left: 3px solid var(--primary-light);
+        background-color: var(--bg-alt);
+        transform: translateX(4px);
+    }
+    .chapter-num {
+        background: var(--primary);
+        color: white;
+        width: 2.5rem;
+        height: 2.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        margin-right: 0.75rem;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+    }
+    .fade-in {
+        animation: fadeIn 0.6s ease-in;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .icon-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        padding: 0.125rem;
+    }
+    .icon-inner {
+        background: white;
+        border-radius: 9999px;
+        padding: 2rem;
+        position: relative;
+        z-index: 2;
+    }
+    .icon-wrapper::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 9999px;
+        background: linear-gradient(135deg, rgba(30,64,175,0.4), rgba(59,130,246,0.4));
+        filter: blur(8px);
+        animation: gentlePulse 4s ease-in-out infinite;
+        z-index: 1;
+    }
+    @keyframes gentlePulse {
+        0%, 100% { 
+            opacity: 0.4;
+            transform: scale(0.95);
+        }
+        50% { 
+            opacity: 0.7;
+            transform: scale(1.05);
+        }
+    }
+    .rings-group {
+        animation: slowRotate 20s linear infinite;
+        transform-origin: 32px 32px;
+    }
+    @keyframes slowRotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .rings-group, .icon-wrapper::before {
+            animation: none;
+        }
+    }
 </style>
 </head>
-<body>
-<video controls autoplay loop muted>
-<source src="your-video-url.mp4" type="video/mp4" />
-Your browser does not support the video tag.
-</video>
+<body class="antialiased">
+    
+    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-lg font-bold text-gray-900">I Love You, But I'm Not Happy</h1>
+                    <p class="text-xs text-gray-500">by Richard Bens</p>
+                </div>
+                <div class="hidden md:block">
+                    <a href="#toc" class="text-sm font-medium text-gray-700 hover:text-blue-700 px-3 py-2 transition">Table of Contents</a>
+                    <a href="#start" class="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-700 hover:bg-blue-800 transition">Start Reading</a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-<a href="https://ln.run/H_LVB" class="button green">I AND MY FRIENDS</a>
-<a href="https://ln.run/H_LVB" class="button yellow">BATHING VIDEOS</a>
-<a href="https://ln.run/H_LVB" class="button red">ALL VIDEOS</a>
+    <section class="book-page flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+        <div class="max-w-3xl mx-auto text-center px-6 fade-in">
+            <div class="mb-8">
+                <div class="icon-wrapper">
+                    <div class="icon-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto" viewBox="0 0 64 64" fill="none">
+                            <g class="rings-group">
+                                <circle cx="24" cy="32" r="12" stroke="#1e40af" stroke-width="3" fill="none"/>
+                                <circle cx="40" cy="32" r="12" stroke="#3b82f6" stroke-width="3" fill="none"/>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <h1 class="text-4xl md:text-6xl font-bold mb-4 text-gray-900">I Love You, But I'm Not Happy</h1>
+            <p class="text-xl md:text-2xl text-gray-600 mb-8">Why Love Alone Cannot Sustain a Fulfilling Relationship</p>
+            <p class="text-lg text-gray-500 mb-12">A Guide to Understanding Emotional Fulfillment in Relationships</p>
+            <p class="text-xl font-semibold text-gray-800">Richard Bens</p>
+            <div class="mt-16">
+                <a href="#toc" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-700 hover:bg-blue-800 transition shadow-lg hover:shadow-xl">
+                    Begin Reading
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="toc" class="book-page bg-white">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-3xl md:text-4xl font-bold mb-8 text-center">Table of Contents</h2>
+            <div class="space-y-2">
+                <a href="#intro" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="text-gray-500 font-semibold w-12">i.</span>
+                    <span class="text-lg text-gray-800">Introduction: The Paradox of Love Without Happiness</span>
+                </a>
+                <a href="#ch1" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="chapter-num">1</span>
+                    <span class="text-lg text-gray-800">Why Love Is Not Enough</span>
+                </a>
+                <a href="#ch2" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="chapter-num">2</span>
+                    <span class="text-lg text-gray-800">The Four Foundations of Relationship Fulfillment</span>
+                </a>
+                <a href="#ch3" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="chapter-num">3</span>
+                    <span class="text-lg text-gray-800">Signs of Emotional Disconnect</span>
+                </a>
+                <a href="#ch4" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="chapter-num">4</span>
+                    <span class="text-lg text-gray-800">How We Drift Apart While Staying Together</span>
+                </a>
+                <a href="#ch5" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="chapter-num">5</span>
+                    <span class="text-lg text-gray-800">Rebuilding Happiness Without Leaving Love Behind</span>
+                </a>
+                <a href="#exercises" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="text-gray-500 font-semibold w-12">ii.</span>
+                    <span class="text-lg text-gray-800">Practical Exercises and Tools</span>
+                </a>
+                <a href="#reflection" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="text-gray-500 font-semibold w-12">iii.</span>
+                    <span class="text-lg text-gray-800">Reflection Questions</span>
+                </a>
+                <a href="#conclusion" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="text-gray-500 font-semibold w-12">iv.</span>
+                    <span class="text-lg text-gray-800">Conclusion: Choosing Fulfillment With Love</span>
+                </a>
+                <a href="#contact" class="toc-link flex items-center p-4 rounded-lg">
+                    <span class="text-gray-500 font-semibold w-12">v.</span>
+                    <span class="text-lg text-gray-800">Contact the Author</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="intro" class="book-page bg-gray-50">
+        <div id="start" class="max-w-3xl mx-auto">
+            <h2 class="text-3xl md:text-4xl font-bold mb-6">Introduction: The Paradox of Love Without Happiness</h2>
+            
+            <p class="mb-4 text-lg">You can love someone deeply and still feel empty when you are with them. This is one of the most confusing and painful truths about long term relationships.</p>
+            
+            <p class="mb-4">Millions of people stay in relationships where love exists, but joy, peace, and fulfillment are absent. They tell themselves that love should be enough. They believe that leaving would mean they never truly loved. They sacrifice their happiness out of loyalty, fear, or guilt.</p>
+            
+            <div class="key-insight">
+                <p class="font-semibold text-gray-900">Key Insight: Love is the starting point of a relationship, not the entire structure. A house built only on a foundation will not shelter you from the rain.</p>
+            </div>
+            
+            <p class="mb-4">This book is for you if you have ever thought: I care about my partner, but I am not excited to come home. I feel lonely even when we are together. I do not know if I should stay or go because the love is still there.</p>
+            
+            <p class="mb-4">We will separate love from happiness. We will examine what a relationship needs beyond emotional attachment. You will get clear tools to assess your situation and decide your next step with honesty and self respect.</p>
+            
+            <p class="mb-4">This is not a book that tells you to leave. It is not a book that tells you to stay. It is a book that tells you the truth so you can choose with clarity.</p>
+            
+            <p class="font-medium">Let's begin.</p>
+        </div>
+    </section>
+
+    <section id="ch1" class="book-page bg-white">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex items-center mb-8">
+                <span class="chapter-num">1</span>
+                <h2 class="text-3xl md:text-4xl font-bold">Why Love Is Not Enough</h2>
+            </div>
+            
+            <p class="mb-4">Love is an emotion. Happiness in a relationship is an experience created by daily actions, compatibility, and mutual effort. An emotion can exist while the experience fails.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">The Myth We Were Taught</h3>
+            <p class="mb-4">Popular culture teaches that love conquers all. Movies end when the couple gets together. Rarely do we see what happens during the daily grind, the unresolved conflicts, or the slow erosion of respect.</p>
+            
+            <p class="mb-4">Love makes you want to be with someone. It does not teach you how to be with someone in a way that sustains you both.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Three Reasons Love Fails to Create Happiness</h3>
+            
+            <ol class="list-decimal pl-6 space-y-4 mb-6">
+                <li>
+                    <strong class="text-gray-900">Love does not guarantee compatibility.</strong> You can love a person whose values, goals, or lifestyle clash with yours. Love says I want you. Compatibility asks can we build a life that works for both of us.
+                </li>
+                <li>
+                    <strong class="text-gray-900">Love does not fix behavior.</strong> Love does not stop criticism, neglect, dishonesty, or emotional unavailability. Behavior is a choice. Love is a feeling. One does not automatically correct the other.
+                </li>
+                <li>
+                    <strong class="text-gray-900">Love does not meet all human needs.</strong> You need respect, safety, growth, intimacy, and peace. Love is only one need. If the others are unmet, you will feel deprivation no matter how much you care.
+                </li>
+            </ol>
+            
+            <div class="key-insight">
+                <p class="font-semibold text-gray-900">Key Insight: Staying because you love someone is not the same as staying because the relationship is healthy. The first is about your feelings. The second is about your wellbeing.</p>
+            </div>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Love vs. Relationship Satisfaction</h3>
+            <p class="mb-4">Research in relationship psychology separates romantic love from relationship satisfaction. You can score high on love and low on satisfaction. This gap is where unhappiness lives.</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>High Love</th>
+                        <th>Low Love</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>High Satisfaction:</strong> Thriving relationship. Both partners feel valued and fulfilled.</td>
+                        <td><strong>High Satisfaction:</strong> Rare. Usually friendship or companionship without romance.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Low Satisfaction:</strong> The I love you but I am not happy trap. Common and painful.</td>
+                        <td><strong>Low Satisfaction:</strong> Relationship is likely ending. Neither connection nor contentment exists.</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <p class="mt-6">Your goal is not to kill the love. Your goal is to understand why satisfaction is missing.</p>
+        </div>
+    </section>
+
+    <section id="ch2" class="book-page bg-gray-50">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex items-center mb-8">
+                <span class="chapter-num">2</span>
+                <h2 class="text-3xl md:text-4xl font-bold">The Four Foundations of Relationship Fulfillment</h2>
+            </div>
+            
+            <p class="mb-6">Love is one pillar. A fulfilling relationship stands on four. When any pillar weakens, the structure feels unstable even if love remains.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Foundation 1: Emotional Safety</h3>
+            <p class="mb-4">Emotional safety means you can express your true thoughts, feelings, and needs without fear of attack, dismissal, or punishment.</p>
+            
+            <p class="mb-4"><strong>Signs it exists:</strong></p>
+            <ul class="list-disc pl-6 mb-4 space-y-2">
+                <li>Conflict leads to resolution, not resentment</li>
+                <li>You can say I am hurt without it turning into your fault</li>
+                <li>Vulnerability is met with care, not criticism</li>
+            </ul>
+            
+            <p class="mb-6"><strong>Signs it is missing:</strong> You rehearse conversations before speaking. You hide parts of yourself. You feel anxious after sharing.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Foundation 2: Mutual Respect</h3>
+            <p class="mb-4">Respect is treating your partner as an equal with valid opinions, boundaries, and autonomy. Love without respect becomes control or contempt.</p>
+            
+            <p class="mb-4"><strong>Signs it exists:</strong></p>
+            <ul class="list-disc pl-6 mb-4 space-y-2">
+                <li>Differences are negotiated, not ridiculed</li>
+                <li>Boundaries are honored without a fight</li>
+                <li>You admire how your partner handles life, even when you disagree</li>
+            </ul>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Foundation 3: Shared Vision</h3>
+            <p class="mb-4">A shared vision means your core life directions align. This includes views on children, money, lifestyle, growth, and commitment. For those who value abstinence before marriage, alignment on values related to commitment and boundaries is essential for long term trust.</p>
+            
+            <div class="key-insight">
+                <p class="font-semibold text-gray-900">Key Insight: You can love someone who wants a different life than you do. But you cannot build one life while heading in opposite directions.</p>
+            </div>
+            
+            <p class="mb-4">You do not need identical goals. You need compatible trajectories. If one partner values stability and the other craves constant change, friction is inevitable.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Foundation 4: Daily Joy</h3>
+            <p class="mb-4">Daily joy is the sum of small moments. Laughter, quality conversation, teamwork, and play. Passion fades. Peace and pleasure in shared life must remain.</p>
+            
+            <p class="mb-4"><strong>Ask yourself:</strong></p>
+            <ul class="list-disc pl-6 mb-4 space-y-2">
+                <li>Do we enjoy ordinary days together</li>
+                <li>Do we have rituals that bring us closer</li>
+                <li>When was the last time we genuinely laughed together</li>
+            </ul>
+            
+            <p class="mt-6">Love may bring you together. These four foundations determine if you stay together with happiness.</p>
+        </div>
+    </section>
+
+    <section id="ch3" class="book-page bg-white">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex items-center mb-8">
+                <span class="chapter-num">3</span>
+                <h2 class="text-3xl md:text-4xl font-bold">Signs of Emotional Disconnect</h2>
+            </div>
+            
+            <p class="mb-6">Emotional disconnect rarely announces itself. It erodes quietly. Recognizing it early gives you options before resentment becomes permanent.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">The 7 Clearest Signs</h3>
+            
+            <ol class="list-decimal pl-6 space-y-6 mb-6">
+                <li>
+                    <strong class="text-gray-900">Conversations stay on the surface.</strong><br>
+                    You talk about schedules, chores, and logistics. You no longer discuss hopes, fears, or ideas. The relationship becomes an administrative partnership.
+                </li>
+                <li>
+                    <strong class="text-gray-900">Emotional closeness feels like an obligation.</strong><br>
+                    Meaningful connection decreases or becomes mechanical. You avoid deeper conversations because they highlight the distance.
+                </li>
+                <li>
+                    <strong class="text-gray-900">You feel lonelier with them than without them.</strong><br>
+                    This is the most painful sign. Their presence reminds you of the absence of connection. You feel unseen even when they are in the room.
+                </li>
+                <li>
+                    <strong class="text-gray-900">Conflict is either explosive or nonexistent.</strong><br>
+                    Healthy conflict resolves issues. Explosive conflict creates damage. No conflict means one or both of you have stopped caring enough to engage.
+                </li>
+                <li>
+                    <strong class="text-gray-900">You fantasize about a different life often.</strong><br>
+                    Occasional thoughts are normal. Constant escape fantasies signal your current life is not meeting core needs.
+                </li>
+                <li>
+                    <strong class="text-gray-900">You keep score.</strong><br>
+                    You track who did more, who hurt more, who tried more. Scorekeeping replaces generosity. It means trust has been replaced with auditing.
+                </li>
+                <li>
+                    <strong class="text-gray-900">Your growth is stalled or discouraged.</strong><br>
+                    You feel smaller, not expanded, in the relationship. Your interests, friendships, or ambitions have shrunk to maintain peace.
+                </li>
+            </ol>
+            
+            <div class="reflection-box">
+                <h4 class="font-semibold text-lg mb-3">Quick Assessment</h4>
+                <p class="mb-3">Rate each statement from 1 to 5. 1 is never true. 5 is always true.</p>
+                <ul class="space-y-2 text-gray-700">
+                    <li>I feel emotionally safe sharing difficult truths with my partner.</li>
+                    <li>I genuinely enjoy spending unstructured time with my partner.</li>
+                    <li>My partner respects my boundaries without argument.</li>
+                    <li>We resolve conflict in a way that brings us closer.</li>
+                    <li>I am optimistic about our future together.</li>
+                </ul>
+                <p class="mt-4 font-medium">Scores below 15 indicate significant disconnect. Scores below 10 require immediate attention.</p>
+            </div>
+            
+            <div class="key-insight">
+                <p class="font-semibold text-gray-900">Key Insight: Disconnect is not a verdict. It is data. Data tells you where to focus effort or where to accept reality.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="ch4" class="book-page bg-gray-50">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex items-center mb-8">
+                <span class="chapter-num">4</span>
+                <h2 class="text-3xl md:text-4xl font-bold">How We Drift Apart While Staying Together</h2>
+            </div>
+            
+            <p class="mb-6">Most couples do not explode. They erode. Drift happens slowly enough that you adapt to each stage of loss without noticing the total distance traveled.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">The Five Stages of Drift</h3>
+            
+            <div class="space-y-6">
+                <div class="bg-white p-5 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-lg mb-2">Stage 1: Busyness</h4>
+                    <p>Life gets full. Work, kids, stress. You tell yourself this is temporary. You postpone connection for when things calm down. They rarely do.</p>
+                </div>
+                
+                <div class="bg-white p-5 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-lg mb-2">Stage 2: Assumption</h4>
+                    <p>You stop asking questions because you assume you know your partner. You stop being curious. Curiosity is the fuel of intimacy. Without it, you live with a version of them from the past.</p>
+                </div>
+                
+                <div class="bg-white p-5 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-lg mb-2">Stage 3: Unspoken Resentment</h4>
+                    <p>Small hurts go unaddressed. You avoid hard talks to keep peace. Resentment does not need expression to grow. It grows in silence until it colors every interaction.</p>
+                </div>
+                
+                <div class="bg-white p-5 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-lg mb-2">Stage 4: Individual Coping</h4>
+                    <p>You each find ways to meet needs outside the relationship. Hobbies, friends, work, screens. This is not wrong, but it replaces partnership with parallel lives.</p>
+                </div>
+                
+                <div class="bg-white p-5 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-lg mb-2">Stage 5: Emotional Divorce</h4>
+                    <p>You are legally together but emotionally separate. You have accepted low connection as normal. At this point, love remains as history, not as a living bond.</p>
+                </div>
+            </div>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Why Good People Drift</h3>
+            <p class="mb-4">Drift is not always caused by bad behavior. It is often caused by good intentions without skill.</p>
+            
+            <ul class="list-disc pl-6 mb-6 space-y-2">
+                <li><strong>You prioritize being responsible over being connected.</strong> You provide, but you do not engage.</li>
+                <li><strong>You avoid conflict to protect the relationship.</strong> Avoidance protects short term peace but destroys long term intimacy.</li>
+                <li><strong>You expect your partner to read your mind.</strong> Unmet unspoken expectations breed resentment.</li>
+                <li><strong>You stop dating each other.</strong> Familiarity replaces pursuit. Comfort replaces effort.</li>
+            </ul>
+            
+            <div class="key-insight">
+                <p class="font-semibold text-gray-900">Key Insight: Relationships do not die from lack of love. They die from lack of attention. Attention is the act of choosing your partner again in small moments, daily.</p>
+            </div>
+            
+            <p class="mt-6">The solution is not grand gestures. The solution is interrupting drift with deliberate connection before distance becomes identity.</p>
+        </div>
+    </section>
+
+    <section id="ch5" class="book-page bg-white">
+        <div class="max-w-3xl mx-auto">
+            <div class="flex items-center mb-8">
+                <span class="chapter-num">5</span>
+                <h2 class="text-3xl md:text-4xl font-bold">Rebuilding Happiness Without Leaving Love Behind</h2>
+            </div>
+            
+            <p class="mb-6">If the foundations are weak but not destroyed, rebuilding is possible. It requires honesty, effort from both people, and measurable change. This chapter honors the value of emotional connection and respect, with an emphasis on maintaining clear boundaries around abstinence before marriage.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Step 1: Name the Truth Together</h3>
+            <p class="mb-4">Use this script: I love you. I am also not happy right now. I want to understand if we can rebuild happiness together. Are you willing to have that conversation.</p>
+            <p class="mb-6">Do not blame. State your experience. Your partner cannot defend against your feelings. They can only respond to them.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Step 2: Audit the Four Foundations</h3>
+            <p class="mb-4">Sit down separately and rate each foundation from 1 to 10. Compare answers. Do not debate scores. Use the gap to identify where to start.</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Foundation</th>
+                        <th>Your Score</th>
+                        <th>Partner Score</th>
+                        <th>Priority</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Emotional Safety</td>
+                        <td></td>
+                        <td></td>
+                        <td>High Med Low</td>
+                    </tr>
+                    <tr>
+                        <td>Mutual Respect</td>
+                        <td></td>
+                        <td></td>
+                        <td>High Med Low</td>
+                    </tr>
+                    <tr>
+                        <td>Shared Vision</td>
+                        <td></td>
+                        <td></td>
+                        <td>High Med Low</td>
+                    </tr>
+                    <tr>
+                        <td>Daily Joy</td>
+                        <td></td>
+                        <td></td>
+                        <td>High Med Low</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Step 3: Choose One High Impact Change</h3>
+            <p class="mb-4">Do not overhaul everything. Pick one behavior that would improve your lowest foundation. Commit for 30 days.</p>
+            
+            <p class="mb-4"><strong>Examples:</strong></p>
+            <ul class="list-disc pl-6 mb-6 space-y-2">
+                <li><strong>Safety:</strong> No defensive responses for the first 60 seconds when your partner shares a complaint. Just listen.</li>
+                <li><strong>Respect:</strong> Ask before advising. Replace you should with would it help if.</li>
+                <li><strong>Vision:</strong> One 20 minute talk per week about future plans with no phones. Include discussion of shared values and boundaries.</li>
+                <li><strong>Joy:</strong> One intentional act of play, encouragement, or laughter daily. No exceptions.</li>
+            </ul>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Step 4: Create Accountability</h3>
+            <p class="mb-4">Change without tracking fades. Schedule a weekly 15 minute check in. Ask: What worked. What did not. What will we try next week.</p>
+            
+            <div class="key-insight">
+                <p class="font-semibold text-gray-900">Key Insight: If only one person does the work, you are not rebuilding a relationship. You are delaying a breakup. Mutual effort is non negotiable for mutual happiness.</p>
+            </div>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">When to Accept It Is Not Working</h3>
+            <p class="mb-4">Rebuilding fails when these three conditions are present for 90 days or more:</p>
+            <ol class="list-decimal pl-6 space-y-2">
+                <li>One partner refuses to acknowledge the unhappiness.</li>
+                <li>Agreed changes are not attempted.</li>
+                <li>Your mental or physical health declines from staying.</li>
+            </ol>
+            <p class="mt-4">Love does not obligate you to self sacrifice. You can exit with compassion and still honor the love that existed.</p>
+        </div>
+    </section>
+
+    <section id="exercises" class="book-page bg-gray-50">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-3xl md:text-4xl font-bold mb-6">Practical Exercises and Tools</h2>
+            <p class="mb-8 text-lg">Use these tools alone or with your partner. Insight without action changes nothing.</p>
+            
+            <div class="exercise-box">
+                <h3 class="text-xl font-bold mb-3">Exercise 1: The Unhappy Love Inventory</h3>
+                <p class="mb-4">Complete these sentences with total honesty. Do not filter for politeness.</p>
+                <ol class="list-decimal pl-6 space-y-3">
+                    <li>I love my partner, but I feel unhappy when...</li>
+                    <li>The part of me that feels most neglected in this relationship is...</li>
+                    <li>If nothing changed for the next five years, I would feel...</li>
+                    <li>What I miss most about our early relationship is...</li>
+                    <li>One change that would increase my happiness by 20 percent is...</li>
+                </ol>
+            </div>
+            
+            <div class="exercise-box">
+                <h3 class="text-xl font-bold mb-3">Exercise 2: The 5 Minute Reconnection Ritual</h3>
+                <p class="mb-4">Do this daily for 14 days. It rebuilds emotional safety and daily joy through respectful connection.</p>
+                <ul class="list-disc pl-6 space-y-2">
+                    <li><strong>Minute 1:</strong> Sit together without distractions. Be present with each other.</li>
+                    <li><strong>Minute 2:</strong> One person shares a high and a low from their day. No fixing, just listening.</li>
+                    <li><strong>Minute 3:</strong> Switch roles. Second person shares.</li>
+                    <li><strong>Minute 4:</strong> Each person names one thing they appreciate about the other today.</li>
+                    <li><strong>Minute 5:</strong> Eye contact in silence for 20 seconds. End with words of affirmation.</li>
+                </ul>
+            </div>
+            
+            <div class="exercise-box">
+                <h3 class="text-xl font-bold mb-3">Exercise 3: The Decision Matrix</h3>
+                <p class="mb-4">If you are stuck between staying and leaving, use this framework. Score each from 1 to 10.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Factor</th>
+                            <th>Stay Score</th>
+                            <th>Leave Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Emotional wellbeing in 1 year</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Alignment with core values</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Impact on growth and purpose</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Level of respect present</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>Hope based on evidence not fantasy</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="mt-4">Total both columns. A 15 point difference indicates a clear direction. Less than 10 means more data or counseling is needed.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="reflection" class="book-page bg-white">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-3xl md:text-4xl font-bold mb-6">Reflection Questions</h2>
+            <p class="mb-8 text-lg">Journal on these prompts. Writing exposes truths that thinking alone hides.</p>
+            
+            <div class="space-y-8">
+                <div class="reflection-box">
+                    <h3 class="text-xl font-semibold mb-3">On Love</h3>
+                    <ul class="list-disc pl-6 space-y-2">
+                        <li>What did I believe love alone would fix when I entered this relationship</li>
+                        <li>How has my definition of love matured since then</li>
+                        <li>Am I staying because I love who they are, or who I hope they become</li>
+                    </ul>
+                </div>
+                
+                <div class="reflection-box">
+                    <h3 class="text-xl font-semibold mb-3">On Happiness</h3>
+                    <ul class="list-disc pl-6 space-y-2">
+                        <li>What percentage of my overall happiness do I expect my partner to provide</li>
+                        <li>What parts of my unhappiness are mine to solve, regardless of this relationship</li>
+                        <li>When was the last time I felt truly content in this relationship. What was different</li>
+                    </ul>
+                </div>
+                
+                <div class="reflection-box">
+                    <h3 class="text-xl font-semibold mb-3">On Responsibility</h3>
+                    <ul class="list-disc pl-6 space-y-2">
+                        <li>How have I contributed to the disconnect we experience</li>
+                        <li>What difficult conversations have I avoided that need to happen</li>
+                        <li>If my best friend described my relationship, what advice would I give them</li>
+                    </ul>
+                </div>
+                
+                <div class="reflection-box">
+                    <h3 class="text-xl font-semibold mb-3">On The Future</h3>
+                    <ul class="list-disc pl-6 space-y-2">
+                        <li>If we did everything right starting today, what would our relationship look like in one year</li>
+                        <li>What evidence do I have that this future is possible with my current partner</li>
+                        <li>What am I afraid to admit to myself about where this is heading</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="key-insight mt-8">
+                <p class="font-semibold text-gray-900">Key Insight: Clarity is kind. Vagueness keeps you stuck. Your answers will not create your future, but they will reveal the path you are already on.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="conclusion" class="book-page bg-gray-50">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-3xl md:text-4xl font-bold mb-6">Conclusion: Choosing Fulfillment With Love</h2>
+            
+            <p class="mb-4 text-lg">You picked up this book because love was not enough. Now you understand why. You have language for the gap between affection and fulfillment.</p>
+            
+            <p class="mb-4">Love is worthy. It is beautiful. But it is not a substitute for safety, respect, shared direction, and joy. Demanding those things does not make you selfish. It makes you honest about what it takes for a relationship to thrive.</p>
+            
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Your Three Options Moving Forward</h3>
+            
+            <ol class="list-decimal pl-6 space-y-4 mb-6">
+                <li>
+                    <strong class="text-gray-900">Recommit and rebuild.</strong> If both of you are willing, use the tools in this book. Measure progress monthly. Fulfillment can return when effort is mutual and consistent.
+                </li>
+                <li>
+                    <strong class="text-gray-900">Accept and adjust expectations.</strong> Some relationships transition from romance to companionship. If both people choose this consciously and without resentment, it can work. This requires radical honesty.
+                </li>
+                <li>
+                    <strong class="text-gray-900">Release with gratitude.</strong> If happiness is not possible together, leaving is not failure. It is integrity. You can grieve the love and still choose your wellbeing. You can thank the relationship for what it taught you and walk toward a life that fits.
+                </li>
+            </ol>
+            
+            <div class="key-insight">
+                <p class="font-semibold text-gray-900">Key Insight: The bravest act is not staying in love. The bravest act is telling the truth about what you need to be happy, then acting on that truth with compassion for everyone involved.</p>
+            </div>
+            
+            <p class="mb-4 mt-8">You deserve a relationship where love and happiness coexist. Not because you are owed it, but because you are willing to build it or choose it.</p>
+            
+            <p class="mb-4">Stop waiting for love to fix what only action can repair. Stop apologizing for wanting more than affection. You are not difficult. You are human.</p>
+            
+            <p class="text-xl font-semibold mt-8">Choose fulfillment. With love, or after love. But choose.</p>
+            
+            <div class="mt-12 pt-8 border-t border-gray-300 text-center">
+                <p class="text-lg font-semibold">Richard Bens</p>
+                <p class="text-gray-600 mt-2">Thank you for reading. May your next chapter be honest and full.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="book-page bg-white">
+        <div class="max-w-3xl mx-auto flex items-center justify-center min-h-screen">
+            <div class="text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-6">Contact the Author</h2>
+                <p class="text-lg text-gray-600 mb-8">For speaking engagements, coaching inquiries, or feedback on this book</p>
+                <div class="bg-gray-50 rounded-xl p-8 shadow-sm border border-gray-200 inline-block">
+                    <p class="text-xl font-semibold text-gray-900 mb-2">Richard Bens</p>
+                    <a href="mailto:longdon1000@gmail.com" class="text-lg text-blue-700 hover:text-blue-800 transition font-medium">longdon1000@gmail.com</a>
+                    <p class="text-sm text-gray-500 mt-6">Your story matters. Your happiness matters.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <button id="backToTop" class="fixed bottom-6 right-6 bg-blue-700 text-white p-3 rounded-full shadow-lg hover:bg-blue-800 transition opacity-0 pointer-events-none">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+    </button>
+
+    <script>
+        const backToTopButton = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.remove('opacity-0', 'pointer-events-none');
+                backToTopButton.classList.add('opacity-100');
+            } else {
+                backToTopButton.classList.add('opacity-0', 'pointer-events-none');
+                backToTopButton.classList.remove('opacity-100');
+            }
+        });
+        
+        backToTopButton.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
-
